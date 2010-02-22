@@ -1,15 +1,51 @@
+{-# LANGUAGE
+  TypeSynonymInstances
+  , FlexibleInstances
+  #-}
 
 import Text.ParserCombinators.Parsec
 import Statistics.Sample
 import Data.Array.Vector
+import Data.Monoid
+import Debug.Trace
 
 
 
 data Result = Result {
       uniprotId       :: String
-    , seqLength       :: Integer
-    , numPredictedTMH :: Integer
+    -- , seqLength       :: Integer
+    , predictedGPCR   :: Bool
     } deriving Show
+
+
+instance Monoid (Parser String) where
+    mempty = option "" (many anyChar)
+    mappend p1 p2 = do
+      p1' <- p1
+      p2' <- p2
+      return $ p1' ++ p2'
+ 
+(<++>) :: (Monoid a) => a -> a -> a
+l <++> r = mconcat [l,r]
+ 
+ 
+positiveInt = many digit
+negativeInt = option "" (string "-") <++> positiveInt
+ 
+-- | Parse (-/+) integers
+integral :: (Integral i, Read i) => Parser i
+integral = (negativeInt <|> positiveInt) >>= return . read 
+ 
+ 
+decimal :: (Read f, Fractional f) => Parser f
+decimal = do
+  pre <- option "" (string "-")
+  ds <- many digit
+  char '.'
+  ds' <- many digit
+  return . read $ pre ++ ds ++ "." ++ ds'
+  <?> "a fractional number"
+
 
 
 tmhmm_comment p = do
@@ -44,8 +80,7 @@ tmhmm = do
 
   return Result {
                uniprotId = u
-             , seqLength = l
-             , numPredictedTMH = c
+             , predictedGPCR = c == 7
              }
 
 
@@ -63,6 +98,37 @@ tmhmms = do
   many tmhmm
 
 
+gpcrhmm_head = do
+  string "Sequence identifier"
+  spaces
+  string "global"
+  spaces
+  string "local"
+  spaces
+  string "pred"
+  spaces
+
+gpcrhmm_line :: Parser Result
+gpcrhmm_line = do
+  letter `manyTill` char '|'
+  u <- alphaNum `manyTill` char '|'
+  many $ try alphaNum <|> char '_'
+  spaces
+  try (show `fmap` decimal) <|> string "Too short"
+  spaces
+  s <- string "sequence" <|> string "-" <|> (show `fmap` decimal)
+  spaces
+  pred <- string "No" <|> string "GPCR"
+  spaces
+  return Result {
+                 uniprotId = u
+               , predictedGPCR = pred == "GPCR"
+               }
+
+gpcrhmms :: Parser [Result]
+gpcrhmms = do
+  gpcrhmm_head
+  many gpcrhmm_line
 
 
 t p s = parse (tmhmm_comment p) [] s
@@ -70,34 +136,22 @@ t p s = parse (tmhmm_comment p) [] s
 t1 = t tmhmm_length "# tr_Q2HPE8_Q2HPE8_ANOGA Length: 460"
 t2 = t tmhmm_num_predicted_tmhs "# tr_Q2HPE8_Q2HPE8_ANOGA Number of predicted TMHs:  7"
 t3 = parse tmhmm_uniprot_id [] "# tr_Q2HPE8_Q2HPE8_ANOGA Length: 460"
-
+t4 = parse gpcrhmm_head [] "Sequence identifier              global     local      pred "
+t5 = parse gpcrhmm_line [] "tr|A0NC14|A0NC14_ANOGA           79.31      63.44      GPCR "
 
 testf = "/home/badi/Research/gpcrs/tmhmm2/data/test.tmhmm"
 testf2 = "/home/badi/Research/gpcrs/tmhmm2/data/test.gpcrhmm"
 
 tmhmmf = "/home/badi/Research/gpcrs/tmhmm2/data/uniprot-organism_anopheles-gpcr.tmhmm"
+gpcrhmmf = "/home/badi/Research/gpcrs/tmhmm2/data/uniprot-organism_anopheles-gpcr.gpcrhmm"
 
-tmhmm_summarize f = do
-  p <- readFile f >>= return . parse tmhmms []
+summarize f p = do
+  p <- readFile f >>= return . parse p []
   return $ case p of
              Left e   -> error $ show e
-             Right r' -> tmhmm_summary r'
+             Right r' -> length . filter predictedGPCR $ r'
 
 
-data Summary = Summary { ave, dev :: Double
-                       , counts   :: [(Int, Int)]
-                       , rest     :: Int
-                       , total    :: Int
-                       } deriving Show
 
-tmhmm_summary :: [Result] -> Summary
-tmhmm_summary rs = let vals = toU $ map (fromIntegral . numPredictedTMH) rs
-                       counts' = let c = [0..7]
-                                 in map (\i -> (fromIntegral i, length $ filter ( (==) i . numPredictedTMH) rs)) c
-                   in Summary {
-                            ave    = mean vals
-                          , dev    = stdDev vals
-                          , counts = counts'
-                          , rest   = length $ filter ( (> 7) . numPredictedTMH) rs
-                          , total  = lengthU vals
-                          }
+tmhmm_pred = summarize tmhmmf tmhmms
+gpcrhmm_pred = summarize gpcrhmmf gpcrhmms
