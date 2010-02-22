@@ -190,4 +190,4 @@ pred_intersect = do
   a <- tmhmm_pred
   b <- gpcrhmm_pred
   c <- phobius_pred
-  return $ {- a `intersect` -} b `intersect` c
+  return $ a `intersect` b `intersect` c
