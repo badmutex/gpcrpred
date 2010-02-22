@@ -131,6 +131,30 @@ gpcrhmms = do
   many gpcrhmm_line
 
 
+phobius_header = do
+  string "SEQENCE ID" ; spaces
+  string "TM"          ; spaces
+  string "SP"          ; spaces
+  string "PREDICTION"  ; spaces
+
+phobius_line = do
+  letter `manyTill` char '|'
+  u <- alphaNum `manyTill` char '|'
+  many $ try alphaNum <|> char '_'
+  spaces
+  p <- read `fmap` positiveInt
+  anyChar `manyTill` newline
+  return Result {
+                 uniprotId = u
+               , predictedGPCR = p == 7
+               }
+
+
+phobius = do
+  phobius_header
+  many phobius_line
+
+
 t p s = parse (tmhmm_comment p) [] s
 
 t1 = t tmhmm_length "# tr_Q2HPE8_Q2HPE8_ANOGA Length: 460"
@@ -138,12 +162,16 @@ t2 = t tmhmm_num_predicted_tmhs "# tr_Q2HPE8_Q2HPE8_ANOGA Number of predicted TM
 t3 = parse tmhmm_uniprot_id [] "# tr_Q2HPE8_Q2HPE8_ANOGA Length: 460"
 t4 = parse gpcrhmm_head [] "Sequence identifier              global     local      pred "
 t5 = parse gpcrhmm_line [] "tr|A0NC14|A0NC14_ANOGA           79.31      63.44      GPCR "
+t6 = parse phobius_header [] "SEQENCE ID                     TM SP PREDICTION"
+t7 = parse phobius_line [] "tr|A0NAM5|A0NAM5_ANOGA          1  0 o26-50i\n"
 
 testf = "/home/badi/Research/gpcrs/tmhmm2/data/test.tmhmm"
 testf2 = "/home/badi/Research/gpcrs/tmhmm2/data/test.gpcrhmm"
+testf3 = "/home/badi/Research/gpcrs/tmhmm2/data/test.phobius"
 
 tmhmmf = "/home/badi/Research/gpcrs/tmhmm2/data/uniprot-organism_anopheles-gpcr.tmhmm"
 gpcrhmmf = "/home/badi/Research/gpcrs/tmhmm2/data/uniprot-organism_anopheles-gpcr.gpcrhmm"
+phobiusf = "/home/badi/Research/gpcrs/tmhmm2/data/uniprot-organism_anopheles-gpcr.phobius"
 
 summarize f p = do
   p <- readFile f >>= return . parse p []
@@ -155,3 +183,4 @@ summarize f p = do
 
 tmhmm_pred = summarize tmhmmf tmhmms
 gpcrhmm_pred = summarize gpcrhmmf gpcrhmms
+phobius_pred = summarize phobiusf phobius
