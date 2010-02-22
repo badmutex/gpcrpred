@@ -5,23 +5,11 @@ import Data.Array.Vector
 
 
 
-class Result a where
-    uniprotId :: a -> String
-    seqLength :: a -> Integer
-    numPredictedTMH :: a -> Integer
-
-
-data TMHMMResult = TMHMM {
-      tmhmm_uniprotId       :: String
-    , tmhmm_seqLength       :: Integer
-    , tmhmm_numPredictedTMH :: Integer
+data Result = Result {
+      uniprotId       :: String
+    , seqLength       :: Integer
+    , numPredictedTMH :: Integer
     } deriving Show
-
-instance Result TMHMMResult where
-    uniprotId = tmhmm_uniprotId
-    seqLength = tmhmm_seqLength
-    numPredictedTMH = tmhmm_numPredictedTMH
-
 
 
 tmhmm_comment p = do
@@ -45,7 +33,7 @@ tmhmm_uniprot_id :: Parser String
 tmhmm_uniprot_id = tmhmm_comment $ anyChar `manyTill` char '_'
 
 
-tmhmm :: Parser TMHMMResult
+tmhmm :: Parser Result
 tmhmm = do
 
   u <- lookAhead tmhmm_uniprot_id
@@ -54,10 +42,10 @@ tmhmm = do
 
   anyChar `manyTill` try (tmhmm_break <|> newline)
 
-  return TMHMM {
-               tmhmm_uniprotId = u
-             , tmhmm_seqLength = l
-             , tmhmm_numPredictedTMH = c
+  return Result {
+               uniprotId = u
+             , seqLength = l
+             , numPredictedTMH = c
              }
 
 
@@ -66,16 +54,13 @@ tmhmm_end = do
   string "References"
   anyChar `manyTill` eof
 
-tmhmms :: Parser [TMHMMResult]
+tmhmms :: Parser [Result]
 tmhmms = do
   string "TMHMM result" >> newline
   spaces >> string "[1]HELP with output formats" >> newline
   tmhmm_break
 
   many tmhmm
-
-
-
 
 
 
@@ -105,7 +90,7 @@ data Summary = Summary { ave, dev :: Double
                        , total    :: Int
                        } deriving Show
 
-tmhmm_summary :: [TMHMMResult] -> Summary
+tmhmm_summary :: [Result] -> Summary
 tmhmm_summary rs = let vals = toU $ map (fromIntegral . numPredictedTMH) rs
                        counts' = let c = [0..7]
                                  in map (\i -> (fromIntegral i, length $ filter ( (==) i . numPredictedTMH) rs)) c
