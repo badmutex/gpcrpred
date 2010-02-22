@@ -8,6 +8,7 @@ import Statistics.Sample
 import Data.Array.Vector
 import Data.Monoid
 import Debug.Trace
+import Data.List
 
 
 
@@ -177,10 +178,16 @@ summarize f p = do
   p <- readFile f >>= return . parse p []
   return $ case p of
              Left e   -> error $ show e
-             Right r' -> length . filter predictedGPCR $ r'
+             Right r' -> map uniprotId . filter predictedGPCR $ r'
 
 
 
 tmhmm_pred = summarize tmhmmf tmhmms
 gpcrhmm_pred = summarize gpcrhmmf gpcrhmms
 phobius_pred = summarize phobiusf phobius
+
+pred_intersect = do
+  a <- tmhmm_pred
+  b <- gpcrhmm_pred
+  c <- phobius_pred
+  return $ {- a `intersect` -} b `intersect` c
