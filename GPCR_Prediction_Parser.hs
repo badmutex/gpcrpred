@@ -7,8 +7,8 @@ import Text.ParserCombinators.Parsec
 import Statistics.Sample
 import Data.Array.Vector
 import Data.Monoid
-import Debug.Trace
 import Data.List
+import Text.Printf
 
 
 
@@ -117,7 +117,7 @@ gpcrhmm_line = do
   spaces
   try (show `fmap` decimal) <|> string "Too short"
   spaces
-  s <- string "sequence" <|> string "-" <|> (show `fmap` decimal)
+  s <- string "sequence" <|> try (show `fmap` decimal) <|> string "-"
   spaces
   pred <- string "No" <|> string "GPCR"
   spaces
@@ -166,13 +166,13 @@ t5 = parse gpcrhmm_line [] "tr|A0NC14|A0NC14_ANOGA           79.31      63.44   
 t6 = parse phobius_header [] "SEQENCE ID                     TM SP PREDICTION"
 t7 = parse phobius_line [] "tr|A0NAM5|A0NAM5_ANOGA          1  0 o26-50i\n"
 
-testf = "/home/badi/Research/gpcrs/tmhmm2/data/test.tmhmm"
-testf2 = "/home/badi/Research/gpcrs/tmhmm2/data/test.gpcrhmm"
-testf3 = "/home/badi/Research/gpcrs/tmhmm2/data/test.phobius"
+testf = "/home/badi/Research/gpcrs/data/test.tmhmm"
+testf2 = "/home/badi/Research/gpcrs/data/test.gpcrhmm"
+testf3 = "/home/badi/Research/gpcrs/data/test.phobius"
 
-tmhmmf = "/home/badi/Research/gpcrs/tmhmm2/data/uniprot-organism_anopheles-gpcr.tmhmm"
-gpcrhmmf = "/home/badi/Research/gpcrs/tmhmm2/data/uniprot-organism_anopheles-gpcr.gpcrhmm"
-phobiusf = "/home/badi/Research/gpcrs/tmhmm2/data/uniprot-organism_anopheles-gpcr.phobius"
+tmhmmf = "/home/badi/Research/gpcrs/data/uniprot-organism-anopheles.tmhmm"
+gpcrhmmf = "/home/badi/Research/gpcrs/data/uniprot-organism-anopheles.gpcrhmm"
+phobiusf = "/home/badi/Research/gpcrs/data/uniprot-organism-anopheles.phobius"
 
 summarize f p = do
   p <- readFile f >>= return . parse p []
@@ -191,3 +191,32 @@ pred_intersect = do
   b <- gpcrhmm_pred
   c <- phobius_pred
   return $ a `intersect` b `intersect` c
+
+confluenceIntersection :: [String] -> String
+confluenceIntersection is = let cs = map toConfluence is
+                            in intercalate "\n" cs
+
+
+uniprotURL :: String -> String
+uniprotURL = printf "http://www.uniprot.org/uniprot/%s"
+
+toConfluence :: String -> String
+toConfluence s = printf "[%s|%s]" s (uniprotURL s)
+
+
+-- zipWith' :: (a -> a -> a -> b) -> a -> [a] -> [a] -> [a] -> [b]
+-- zipWith' _ _ [] [] [a] = []
+-- zipWith' f d [] [] (z:zs) = f d d z : zipWith' f d [] [] zs
+-- zipWith' f d (x:xs) []  = f x d : zipWith' f d xs []
+-- zipWith' f d (x:xs) (y:ys) = f x y : zipWith' f d xs ys
+
+
+-- allToConfluence :: [String] -> [String] -> [String] -> String
+-- allToConfluence as bs = let con = map toConfluence
+--                         in intercalate "\n" $ zipWith' (\a b c -> printf "| %s | %s |" a b) " " (con as) (con bs)
+
+-- go = do
+--   g <- tmhmm_pred
+--   p <- phobius_pred
+--   let c = allToConfluence g p
+--   writeFile "/tmp/confluence.txt" c
