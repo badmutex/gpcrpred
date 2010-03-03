@@ -1,5 +1,6 @@
 {-# LANGUAGE
   TypeSynonymInstances
+  , NoMonomorphismRestriction
   , FlexibleInstances
   #-}
 
@@ -9,6 +10,7 @@ import Data.Array.Vector
 import Data.Monoid
 import Data.List
 import Text.Printf
+import Data.Maybe
 
 import Debug.Trace
 
@@ -19,6 +21,9 @@ data Result a = Result {
     , predictedGPCR   :: Bool
     , score           :: a
     } deriving Show
+
+class CompositScore a where
+    compositScore :: a -> Maybe Double
 
 
 instance Monoid (Parser String) where
@@ -104,6 +109,11 @@ tmhmms = do
 
 data GPCRHMMScore = GPCRHMM { global, local :: Maybe Double } deriving Show
 
+instance CompositScore GPCRHMMScore where
+    compositScore s = case (global s, local s) of
+                        (Just g, Just l) -> Just $ g + l
+                        _ -> Nothing
+
 
 gpcrhmm_head = do
   string "Sequence identifier" ; spaces
@@ -186,17 +196,22 @@ tmhmmf = "/home/badi/Research/gpcrs/data/uniprot-organism-anopheles.tmhmm"
 gpcrhmmf = "/home/badi/Research/gpcrs/data/uniprot-organism-anopheles.gpcrhmm"
 phobiusf = "/home/badi/Research/gpcrs/data/uniprot-organism-anopheles.phobius"
 
-summarize f p = do
+doparse f p = do
   p <- readFile f >>= return . parse p []
   return $ case p of
              Left e   -> error $ show e
-             Right r' -> map uniprotId . filter predictedGPCR $ r'
+             Right r' -> r'
+
+uniprots f p = doparse f p >>= \r -> return . map uniprotId . filter predictedGPCR $ r
+
+gpcrUniprotScores adJuster = map us . filter predictedGPCR
+    where us result = (uniprotId result, adJuster . compositScore . score $ result)
 
 
 
-tmhmm_pred = summarize testf2 {- tmhmmf -} tmhmms
-gpcrhmm_pred = summarize gpcrhmmf gpcrhmms
-phobius_pred = summarize phobiusf phobius
+tmhmm_pred = uniprots tmhmmf tmhmms
+gpcrhmm_pred = uniprots gpcrhmmf gpcrhmms
+phobius_pred = uniprots phobiusf phobius
 
 pred_intersect = do
   a <- tmhmm_pred
