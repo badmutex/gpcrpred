@@ -10,12 +10,14 @@ import Data.Monoid
 import Data.List
 import Text.Printf
 
+import Debug.Trace
 
 
-data Result = Result {
+
+data Result a = Result {
       uniprotId       :: String
-    -- , seqLength       :: Integer
     , predictedGPCR   :: Bool
+    , score           :: a
     } deriving Show
 
 
@@ -70,7 +72,7 @@ tmhmm_uniprot_id :: Parser String
 tmhmm_uniprot_id = tmhmm_comment $ anyChar `manyTill` char '_'
 
 
-tmhmm :: Parser Result
+tmhmm :: Parser (Result ())
 tmhmm = do
 
   u <- lookAhead tmhmm_uniprot_id
@@ -82,6 +84,7 @@ tmhmm = do
   return Result {
                uniprotId = u
              , predictedGPCR = c == 7
+             , score = ()
              }
 
 
@@ -90,13 +93,16 @@ tmhmm_end = do
   string "References"
   anyChar `manyTill` eof
 
-tmhmms :: Parser [Result]
+tmhmms :: Parser [Result ()]
 tmhmms = do
   string "TMHMM result" >> newline
   spaces >> string "[1]HELP with output formats" >> newline
   tmhmm_break
 
   many tmhmm
+
+
+data GPCRHMMScore = GPCRHMM { global, local :: Maybe Double } deriving Show
 
 
 gpcrhmm_head = do
@@ -107,24 +113,31 @@ gpcrhmm_head = do
 
 
 
-gpcrhmm_line :: Parser Result
+gpcrhmm_line :: Parser (Result GPCRHMMScore)
 gpcrhmm_line = do
   letter `manyTill` char '|'
   u <- alphaNum `manyTill` char '|'
   many $ try alphaNum <|> char '_'
   spaces
-  try (show `fmap` decimal) <|> string "Too short"
-  spaces
-  s <- string "sequence" <|> try (show `fmap` decimal) <|> string "-"
+
+  scores <- try (string "Too short sequence" >> return Nothing) <|> do
+                 global <- decimal ; spaces
+                 local  <- try (Just `fmap` decimal) <|> (string "-" >> return Nothing)
+                 return $ Just (global, local)
+
   spaces
   pred <- string "No" <|> string "GPCR"
   spaces
+
   return Result {
                  uniprotId = u
                , predictedGPCR = pred == "GPCR"
+               , score = uncurry GPCRHMM $ case scores of
+                                  Nothing -> (Nothing,Nothing)
+                                  Just (g, l) -> (Just g, l)
                }
 
-gpcrhmms :: Parser [Result]
+gpcrhmms :: Parser [Result GPCRHMMScore]
 gpcrhmms = do
   gpcrhmm_head
   many gpcrhmm_line
@@ -146,6 +159,7 @@ phobius_line = do
   return Result {
                  uniprotId = u
                , predictedGPCR = p == 7
+               , score = ()
                }
 
 
@@ -180,7 +194,7 @@ summarize f p = do
 
 
 
-tmhmm_pred = summarize tmhmmf tmhmms
+tmhmm_pred = summarize testf2 {- tmhmmf -} tmhmms
 gpcrhmm_pred = summarize gpcrhmmf gpcrhmms
 phobius_pred = summarize phobiusf phobius
 
