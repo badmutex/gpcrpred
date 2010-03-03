@@ -11,6 +11,7 @@ import Data.Monoid
 import Data.List
 import Text.Printf
 import Data.Maybe
+import Control.Applicative ((<$>))
 
 import Debug.Trace
 
@@ -68,10 +69,10 @@ tmhmmString s p = do
   p
 
 tmhmm_length :: Parser Integer
-tmhmm_length = tmhmmString "Length: " (read `fmap` many digit)
+tmhmm_length = tmhmmString "Length: " (read <$> many digit)
 
 tmhmm_num_predicted_tmhs :: Parser Integer
-tmhmm_num_predicted_tmhs = tmhmmString "Number of predicted TMHs:  " (read `fmap` many digit)
+tmhmm_num_predicted_tmhs = tmhmmString "Number of predicted TMHs:  " (read <$> many digit)
 
 tmhmm_uniprot_id :: Parser String
 tmhmm_uniprot_id = tmhmm_comment $ anyChar `manyTill` char '_'
@@ -132,7 +133,7 @@ gpcrhmm_line = do
 
   scores <- try (string "Too short sequence" >> return Nothing) <|> do
                  global <- decimal ; spaces
-                 local  <- try (Just `fmap` decimal) <|> (string "-" >> return Nothing)
+                 local  <- try (Just <$> decimal) <|> (string "-" >> return Nothing)
                  return $ Just (global, local)
 
   spaces
@@ -164,7 +165,7 @@ phobius_line = do
   u <- alphaNum `manyTill` char '|'
   many $ try alphaNum <|> char '_'
   spaces
-  p <- read `fmap` positiveInt
+  p <- read <$> positiveInt
   anyChar `manyTill` newline
   return Result {
                  uniprotId = u
@@ -202,21 +203,21 @@ doparse f p = do
              Left e   -> error $ show e
              Right r' -> r'
 
-uniprots f p = doparse f p >>= \r -> return . map uniprotId . filter predictedGPCR $ r
+gpcrUniprots = map uniprotId . filter predictedGPCR
 
 gpcrUniprotScores adJuster = map us . filter predictedGPCR
     where us result = (uniprotId result, adJuster . compositScore . score $ result)
 
 
 
-tmhmm_pred = uniprots tmhmmf tmhmms
-gpcrhmm_pred = uniprots gpcrhmmf gpcrhmms
-phobius_pred = uniprots phobiusf phobius
+tmhmm_pred = doparse tmhmmf tmhmms
+gpcrhmm_pred = doparse gpcrhmmf gpcrhmms
+phobius_pred = doparse phobiusf phobius
 
 pred_intersect = do
-  a <- tmhmm_pred
-  b <- gpcrhmm_pred
-  c <- phobius_pred
+  a <- gpcrUniprots <$> tmhmm_pred
+  b <- gpcrUniprots <$> gpcrhmm_pred
+  c <- gpcrUniprots <$> phobius_pred
   return $ a `intersect` b `intersect` c
 
 confluenceIntersection :: [String] -> String
@@ -229,13 +230,6 @@ uniprotURL = printf "http://www.uniprot.org/uniprot/%s"
 
 toConfluence :: String -> String
 toConfluence s = printf "[%s|%s]" s (uniprotURL s)
-
-
--- zipWith' :: (a -> a -> a -> b) -> a -> [a] -> [a] -> [a] -> [b]
--- zipWith' _ _ [] [] [a] = []
--- zipWith' f d [] [] (z:zs) = f d d z : zipWith' f d [] [] zs
--- zipWith' f d (x:xs) []  = f x d : zipWith' f d xs []
--- zipWith' f d (x:xs) (y:ys) = f x y : zipWith' f d xs ys
 
 
 -- allToConfluence :: [String] -> [String] -> [String] -> String
