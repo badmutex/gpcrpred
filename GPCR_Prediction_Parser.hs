@@ -100,14 +100,12 @@ tmhmms = do
 
 
 gpcrhmm_head = do
-  string "Sequence identifier"
-  spaces
-  string "global"
-  spaces
-  string "local"
-  spaces
-  string "pred"
-  spaces
+  string "Sequence identifier" ; spaces
+  string "global"              ; spaces
+  string "local"               ; spaces
+  string "pred"                ; spaces
+
+
 
 gpcrhmm_line :: Parser Result
 gpcrhmm_line = do
