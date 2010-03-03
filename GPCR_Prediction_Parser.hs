@@ -12,6 +12,7 @@ import Data.List
 import Text.Printf
 import Data.Maybe
 import Control.Applicative ((<$>))
+import qualified Data.Map as M
 
 import Debug.Trace
 
@@ -210,8 +211,17 @@ gpcrUniprotScores adJuster = map us . filter predictedGPCR
 
 
 uniprotsScoresColumns :: [(String, Double)] -> [[String]]
-uniprotsScoresColumns = foldl (\[ids,ss] (uid, s) -> [ids ++ [toConfluenceLink uid], ss ++ [printf "%.2f" s]]) [[],[]]
+uniprotsScoresColumns = foldl (\[ids,ss,tasser] (uid, s) -> [ ids ++ [toConfluenceLink uid]
+                                                            , ss ++ [printf "%.2f" s]
+                                                            , tasser ++ [maybe "" id (M.lookup uid structurePredictionTable)]
+                                                            ]) [[],[],[]]
                         . sortBy (\(_,l) (_,r)-> compare l r)
+
+structurePredictionTable = M.fromList $
+                           [ ("A0NC14", "[S40448|http://zhanglab.ccmb.med.umich.edu/I-TASSER/output/S40448/]")
+                           , ("A7XII0", "[S40451|http://zhanglab.ccmb.med.umich.edu/I-TASSER/output/S40451/]")
+                           , ("Q7PSL6", "[S40449|http://zhanglab.ccmb.med.umich.edu/I-TASSER/output/S40449/]")
+                           ]
 
 tmhmm_pred = doparse tmhmmf tmhmms
 gpcrhmm_pred = doparse gpcrhmmf gpcrhmms
@@ -241,8 +251,7 @@ zipWith' f d (x:xs) [] = f x d : zipWith' f d xs []
 zipWith' f d (x:xs) (y:ys) = f x y : zipWith' f d xs ys
 
 confluenceTable :: [[String]] -> String
-confluenceTable (x:xs) = intercalate "|  | \n|" $ foldl (zipWith' toConfluence "-") x xs
-
+confluenceTable (x:xs) = intercalate "| \n|" $ foldl (zipWith' toConfluence "-") x xs
 
 go = do
   gs <- gpcrUniprotScores fromJust <$> gpcrhmm_pred
