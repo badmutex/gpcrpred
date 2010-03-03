@@ -211,9 +211,9 @@ gpcrUniprotScores adJuster = map us . filter predictedGPCR
 
 
 uniprotsScoresColumns :: [(String, Double)] -> [[String]]
-uniprotsScoresColumns = foldl (\[ids,ss,tasser] (uid, s) -> [ ids ++ [toConfluenceLink uid]
-                                                            , ss ++ [printf "%.2f" s]
-                                                            , tasser ++ [maybe "" id (M.lookup uid structurePredictionTable)]
+uniprotsScoresColumns = foldl (\[ids,ss,tasser] (uid, s) -> [ toConfluenceLink uid : ids
+                                                            , printf "%.2f" s : ss
+                                                            , maybe "" id (M.lookup uid structurePredictionTable) : tasser
                                                             ]) [[],[],[]]
                         . sortBy (\(_,l) (_,r)-> compare l r)
 
