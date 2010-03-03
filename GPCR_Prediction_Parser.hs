@@ -209,6 +209,9 @@ gpcrUniprotScores adJuster = map us . filter predictedGPCR
     where us result = (uniprotId result, adJuster . compositScore . score $ result)
 
 
+uniprotsScoresColumns :: [(String, Double)] -> [[String]]
+uniprotsScoresColumns = foldl (\[ids,ss] (uid, s) -> [ids ++ [toConfluenceLink uid], ss ++ [printf "%.2f" s]]) [[],[]]
+                        . sortBy (\(_,l) (_,r)-> compare l r)
 
 tmhmm_pred = doparse tmhmmf tmhmms
 gpcrhmm_pred = doparse gpcrhmmf gpcrhmms
@@ -220,24 +223,30 @@ pred_intersect = do
   c <- gpcrUniprots <$> phobius_pred
   return $ a `intersect` b `intersect` c
 
-confluenceIntersection :: [String] -> String
-confluenceIntersection is = let cs = map toConfluence is
-                            in intercalate "\n" cs
-
 
 uniprotURL :: String -> String
 uniprotURL = printf "http://www.uniprot.org/uniprot/%s"
 
-toConfluence :: String -> String
-toConfluence s = printf "[%s|%s]" s (uniprotURL s)
+toConfluenceLink :: String -> String
+toConfluenceLink s = printf "[%s|%s]" s (uniprotURL s)
+
+toConfluence :: String -> String -> String
+toConfluence s1 s2 = printf " %s | %s " s1 s2
 
 
--- allToConfluence :: [String] -> [String] -> [String] -> String
--- allToConfluence as bs = let con = map toConfluence
---                         in intercalate "\n" $ zipWith' (\a b c -> printf "| %s | %s |" a b) " " (con as) (con bs)
+zipWith' :: (a -> a -> a) -> a -> [a] -> [a] -> [a]
+zipWith' _ _ [] [] = []
+zipWith' f d [] (x:xs) = f d x : zipWith' f d [] xs
+zipWith' f d (x:xs) [] = f x d : zipWith' f d xs []
+zipWith' f d (x:xs) (y:ys) = f x y : zipWith' f d xs ys
 
--- go = do
---   g <- tmhmm_pred
---   p <- phobius_pred
---   let c = allToConfluence g p
---   writeFile "/tmp/confluence.txt" c
+confluenceTable :: [[String]] -> String
+confluenceTable (x:xs) = intercalate "|  | \n|" $ foldl (zipWith' toConfluence "-") x xs
+
+
+go = do
+  gs <- gpcrUniprotScores fromJust <$> gpcrhmm_pred
+  intersection <- pred_intersect
+  let i = filter (\g -> fst g `elem` intersection) gs
+      t = confluenceTable . uniprotsScoresColumns $ i
+  writeFile "/tmp/tmp.txt" t
