@@ -1,0 +1,15 @@
+name:                gpcrpred
+version:             0.0
+synopsis:            <Project description>
+description:         <Project description>
+category:            Bioinformatics
+license:             BSD3
+license-file:        LICENSE
+author:              Badi Abdul-Wahid
+maintainer:          abdulwahidc@gmail.com
+build-depends:       base
+build-type:          Simple
+
+
+Library:
+    build-depends: base, parsec
