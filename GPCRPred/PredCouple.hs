@@ -41,7 +41,7 @@ ignored_midline = do
   newline
 
 
-nomatch = string "No matches found"
+nomatch = try (string "No matches found" >> return True) <|> return False
 
 gqP, gsP, giP, g12P :: Parser String
 gqP = string "Gq/11"
@@ -79,14 +79,18 @@ predcouple :: Parser (Result (Maybe PredCoupleScore))
 predcouple = do
   uid <- begin
   ignored_midline
-  is <- gblock
-  return $ if isNothing is
-           then Result uid False Nothing
-           else Result uid True (Just . mkScore . fromJust $ is)
+  failed <- lookAhead nomatch
+  case failed of
+    True -> nomatch >> (return $ Result uid False Nothing)
+    False -> do
+      is <- gblock
+      return $ if isNothing is
+               then Result uid False Nothing
+               else Result uid True (Just . mkScore . fromJust $ is)
 
 
 predcouples :: Parser [Result (Maybe PredCoupleScore)]
-predcouples = many (spaces >> predcouple)
+predcouples = manyTill (spaces >> predcouple) eof
 
 
 t = parse predcouple [] txt
@@ -100,4 +104,6 @@ t3 = do
              Left e -> error (show e)
              Right r -> r
 
-txt = "Query sequence: tr|Q7RTK4|Q7RTK4_ANOGA\nG-protein coupling specificity - Normalised score\nGq/11 - 0.98\nGs - 0.80\n\nGi/o - 0.01\nG12/13 - 0.01"
+txt = "Query sequence: tr|A7USM3|A7USM3_ANOGA CAUTION!!!!Probable non-GPCR sequence\nG-protein coupling specificity - Normalised score\nNo matches found\nQuery sequence: tr|A7UU57|A7UU57_ANOGA\nG-protein coupling specificity - Normalised score\nGi/o - 0.99\nGq/11 - 0.60\nGs - 0.35"
+
+-- txt = "Query sequence: tr|Q7RTK4|Q7RTK4_ANOGA\nG-protein coupling specificity - Normalised score\nGq/11 - 0.98\nGs - 0.80\n\nGi/o - 0.01\nG12/13 - 0.01"
