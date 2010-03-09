@@ -91,19 +91,3 @@ predcouple = do
 
 predcouples :: Parser [Result (Maybe PredCoupleScore)]
 predcouples = manyTill (spaces >> predcouple) eof
-
-
-t = parse predcouple [] txt
-t' = case t of
-       Right r -> r
-t2 = parse gblock [] "No Matches found"
-
-t3 = do
-  s <- readFile "/home/badi/Research/gpcrs/data/uniprot-organism-anopheles.predcouple"
-  return $ case (parse predcouples [] s) of
-             Left e -> error (show e)
-             Right r -> r
-
-txt = "Query sequence: tr|A7USM3|A7USM3_ANOGA CAUTION!!!!Probable non-GPCR sequence\nG-protein coupling specificity - Normalised score\nNo matches found\nQuery sequence: tr|A7UU57|A7UU57_ANOGA\nG-protein coupling specificity - Normalised score\nGi/o - 0.99\nGq/11 - 0.60\nGs - 0.35"
-
--- txt = "Query sequence: tr|Q7RTK4|Q7RTK4_ANOGA\nG-protein coupling specificity - Normalised score\nGq/11 - 0.98\nGs - 0.80\n\nGi/o - 0.01\nG12/13 - 0.01"
