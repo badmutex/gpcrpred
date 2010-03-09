@@ -85,7 +85,7 @@ predcouple = do
     False -> do
       is <- gblock
       return $ if isNothing is
-               then Result uid False Nothing
+               then Result uid True Nothing
                else Result uid True (Just . mkScore . fromJust $ is)
 
 
