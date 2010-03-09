@@ -50,3 +50,7 @@ gpcrhmm :: Parser [Result GPCRHMMScore]
 gpcrhmm = do
   header
   many line
+
+
+testf = "/home/badi/Research/gpcrs/data/test.gpcrhmm"
+t = readFile testf >>= return . parse gpcrhmm [] 
