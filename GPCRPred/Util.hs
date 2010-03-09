@@ -73,3 +73,5 @@ zipWith' f d (x:xs) (y:ys) = f x y : zipWith' f d xs ys
 intersection :: (Eq a, Functor f, Monad f) => [f [a]] -> f [a]
 intersection = fmap (foldl1' intersect) . sequence
 
+gpcrUniprots :: [Result a] -> [String]
+gpcrUniprots = map uniprotId . filter predictedGPCR

@@ -9,7 +9,12 @@ author:              Badi Abdul-Wahid
 maintainer:          abdulwahidc@gmail.com
 build-depends:       base
 build-type:          Simple
+cabal-version:       >= 1.6
 
-
-Library:
+Library
     build-depends: base, parsec
+    exposed-modules:
+                        GPCRPred,
+                        GPCRPred.Format,
+                        GPCRPred.Types,
+                        GPCRPred.Util
