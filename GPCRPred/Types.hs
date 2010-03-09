@@ -11,3 +11,7 @@ data Result a = Result {
 
 class CompositScore a where
     compositScore :: a -> Maybe Double
+
+
+type UniprotId = String
+type Score = Double
