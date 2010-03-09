@@ -75,3 +75,11 @@ intersection = fmap (foldl1' intersect) . sequence
 
 gpcrUniprots :: [Result a] -> [String]
 gpcrUniprots = map uniprotId . filter predictedGPCR
+
+
+doparse :: FilePath -> Parser a -> IO a
+doparse f p = do
+  p <- readFile f >>= return . parse p []
+  return $ case p of
+             Left e   -> error $ show e
+             Right r' -> r'
