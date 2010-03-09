@@ -6,7 +6,6 @@ module GPCRPred (
                 , T.tmhmm
                 , parse
                 , ParseError
-                , gpcrUniprots, intersection, zipWith', doparse
                 ) where
 
 
@@ -15,7 +14,5 @@ import GPCRPred.Types
 import qualified GPCRPred.GPCRHMM as G
 import qualified GPCRPred.Phobius as P
 import qualified GPCRPred.TMHMM as T
-
-import GPCRPred.Util (gpcrUniprots, intersection, zipWith', doparse)
 
 import Text.ParserCombinators.Parsec

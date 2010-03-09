@@ -76,6 +76,9 @@ intersection = fmap (foldl1' intersect) . sequence
 gpcrUniprots :: [Result a] -> [String]
 gpcrUniprots = map uniprotId . filter predictedGPCR
 
+gpcrUniprotScores adJuster = map us . filter predictedGPCR
+    where us result = (uniprotId result, adJuster . compositScore . score $ result)
+
 
 doparse :: FilePath -> Parser a -> IO a
 doparse f p = do
