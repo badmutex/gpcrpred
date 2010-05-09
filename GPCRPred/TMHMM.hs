@@ -32,6 +32,7 @@ uniprot_id = comment $ anyChar `manyTill` char '_'
 
 sectionBreak = spaces >> char '_' `manyTill` newline >> newline
 
+end :: Parser String
 end = do
   string "References"
   anyChar `manyTill` eof
